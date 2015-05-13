@@ -1,0 +1,89 @@
+# INSTALL/Create Project
+1. pip install -U django 1.8
+2. python -c "import django;print django.get_version()"
+3. django-admin startproject mysite
+4. edit settings.py => database setting, INSTALLED_APPS, etc 
+5. python manage.py migrate
+6. python manage.py runserver 8900
+
+# Create polls apps
+1. python manage.py startapp polls
+2. edit polls/models.py =>
+    from django.db import models
+
+    class Question(models.Model):
+        question_text = models.CharField(max_length=200)
+        pub_date = models.DateTimeField('date published')
+
+    class Choice(models.Model):
+        question = models.ForeignKey(Question)
+        choice_text = models.CharField(max_length=200)
+        votes = models.IntegerField(default=0)
+3. polls를 settings.py INSTALLED_APPS에 추가
+4. python manage.py makemigrations polls (//python manage.py sqlmigrate polls 0001)
+5. python manage.py migrate
+6. python manage.py shell 을 통해 Queryset methods 확인하기
+
+# Admin site
+1. python manage.py createsuperuser
+2. python manage.py runserver 8900// http://localhost:8900/admin
+3. edit polls/admin.py
+    =>  from django.contrib import admin
+        from .models import Question
+
+        admin.site.register(Question)
+4. edit polls/admin.py
+    =>  from django.contrib import admin
+        from .models import Question, Choice
+
+        class QuestionAdmin(admin.ModelAdmin):
+            fields = ['pub_date', 'question_text']
+            fieldsets = [ (None,               {'fields': ['question_text']}), ('Date information', {'fields': ['pub_date'], 'classes': ['collapse']}),
+    ]
+            inlines = [ChoiceInline]
+
+        admin.site.register(Question, QuestionAdmin)
+        admin.site.register(Choice)
+# Create View/Template: homepage/lists/details/archive/search
+1. edit polls/views.py
+    from django.http import HttpResponse
+    from .models import Question
+
+
+    # def index(request):
+    #   return HttpResponse("Hello, world. You're at the polls index.")
+
+    def index(request):
+        latest_question_list = Question.objects.order_by('-pub_date')[:5]
+        output = ', '.join([p.question_text for p in latest_question_list])
+        return HttpResponse(output)
+
+
+
+2. edit polls/urls.py
+    from django.conf.urls import url
+
+    from . import views
+
+    urlpatterns = [
+        url(r'^$', views.index, name='index'),
+    ]
+3. edit mysite/urls.py
+mysite/urls.py
+    from django.conf.urls import include, url
+    from django.contrib import admin
+
+    urlpatterns = [
+        url(r'^polls/', include('polls.urls')), ## '가 있음.
+        url(r'^admin/', include(admin.site.urls)), ##'가 없네.
+    ]
+4. edit polls/templates/polls/index.html
+    {% if latest_question_list %}
+        <ul>
+        {% for question in latest_question_list %}
+            <li><a href="/polls/{{ question.id }}/">{{ question.question_text }}</a></li>
+        {% endfor %}
+        </ul>
+    {% else %}
+        <p>No polls are available.</p>
+    {% endif %}
